@@ -1,0 +1,23 @@
+{
+  "name": "metropolis_2026",
+  "version": "1.0.0",
+  "description": "",
+  "main": "sketch.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LukasReckwald/metropolis_2026.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/LukasReckwald/metropolis_2026/issues"
+  },
+  "homepage": "https://github.com/LukasReckwald/metropolis_2026#readme",
+  "devDependencies": {
+    "@types/p5": "^1.7.7"
+  }
+}
