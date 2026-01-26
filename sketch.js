@@ -4,28 +4,65 @@ let buildings = [];
 let spotlights = [];
 let metropolisBBox;
 let mariaBBox;
+let cameraInitialized = false;
 
-const GROUND_LEVEL_FRONT = 4000;
-const GROUND_LEVEL_CITY = 0;
-const CLEAR_RADIUS = 500;
+const CITY_RING = {
+    radius: 5000,        // Radius des Stadt-Rings
+    innerRadius: 1800,    // Innerer Radius (freier Bereich um Maria)
+    groundLevel: -300,   // Höhe der Stadt-Ebene
+    depth: 1200          // Tiefe/Breite des Rings
+};
 
-// Maria's Position (unabhängig von der vorderen Plane)
-const MARIA_POS = {x: 0, y: GROUND_LEVEL_FRONT -2500, z: 800};
+const MARIA_PLATFORM = {
+    radius: 600,         // Radius der Maria-Plattform
+    groundLevel: 100,    // Höhe der Maria-Plattform (höher als Stadt)
+    height: 1           // Dicke der Plattform
+};
+
+const MARIA_SCALE = 1;
+const METROPOLIS_SCALE = 15;
+
+const MARIA_POS = {
+    x: 0,
+    y: MARIA_PLATFORM.groundLevel -125,  // Angepasst für kleinere Statue
+    z: 0
+};
 
 async function setup() {
     createCanvas(window.innerWidth, window.innerHeight, WEBGL);
     colorMode(HSB);
 
+    // Wichtig für transparente Objekte
+    setAttributes('alpha', true);
+
     maria = await loadModel('models/metropolis_woman.obj', true);
     metropolis = await loadModel('models/Metropolis.obj', true);
 
-    metropolisBBox = calculateBoundingBox(metropolis, 0, GROUND_LEVEL_CITY - 1500, -5000, 15);
-    mariaBBox = calculateBoundingBox(maria, MARIA_POS.x, MARIA_POS.y, MARIA_POS.z, 25);
+    // Metropolis Position für BBox
+    let metroAngle = -PI/2;
+    let metroX = cos(metroAngle) * CITY_RING.radius;
+    let metroZ = sin(metroAngle) * CITY_RING.radius + 1000;
+
+    metropolisBBox = calculateBoundingBox(
+        metropolis,
+        metroX,
+        CITY_RING.groundLevel - 1500,
+        metroZ,
+        METROPOLIS_SCALE
+    );
+
+    mariaBBox = calculateBoundingBox(
+        maria,
+        MARIA_POS.x,
+        MARIA_POS.y,
+        MARIA_POS.z,
+        MARIA_SCALE
+    );
 
     console.log('Metropolis BBox:', metropolisBBox);
     console.log('Maria BBox:', mariaBBox);
 
-    generateBuildings();
+    generateBuildingsOnRing();
     generateSpotlights();
 }
 
@@ -62,43 +99,73 @@ function calculateBoundingBox(model, posX, posY, posZ, scale_factor) {
     };
 }
 
-function generateBuildings() {
+// Gebäude auf dem Ring anordnen
+function generateBuildingsOnRing() {
     buildings = [];
 
-    for (let x = -2400; x <= 2400; x += 250) {
-        for (let z = -2400; z <= 2400; z += 250) {
-            let distanceFromCenter = dist(x, z, 0, 0);
+    // Berechne den äußeren Rand des Rings
+    let outerRadius = CITY_RING.radius + CITY_RING.depth/2;
 
-            if (distanceFromCenter < CLEAR_RADIUS) continue;
+    // Generiere random Gebäude im Ring-Bereich
+    let numBuildings = 800;  // Anzahl der Gebäude
 
-            buildings.push({
-                x: x,
-                z: z,
-                width: random(60, 120),
-                height: random(400, 1200),
-                depth: random(60, 120),
-                hue: 40,
-                sat: random(20, 40),
-                bright: random(40, 70)
-            });
-        }
+    for (let i = 0; i < numBuildings; i++) {
+        // Zufälliger Winkel
+        let angle = random(TWO_PI);
+
+        // Zufälliger Radius im Ring-Bereich
+        let radius = random(CITY_RING.innerRadius + 50, outerRadius - 50);
+
+        // Position berechnen
+        let x = cos(angle) * radius;
+        let z = sin(angle) * radius;
+
+        buildings.push({
+            x: x,
+            z: z,
+            width: random(60, 120),
+            height: random(300, 1000),
+            depth: random(60, 120),
+            hue: 40,
+            sat: random(20, 40),
+            bright: random(40, 70)
+        });
     }
 }
 
 function generateSpotlights() {
-    for (let i = 0; i < 15; i++) {
+    spotlights = [];
+
+    for (let i = 0; i < 20; i++) {  // Reduziert von 40 auf 20
         if (buildings.length > 0) {
             let randomBuilding = random(buildings);
+
+            // Verschiedene Modi für Spotlight-Ziele
+            let rand = random(1);
+            let mode;
+
+            if (rand < 0.7) {
+                // 70% - nach oben
+                mode = 'up';
+            } else if (rand < 0.95) {
+                // 25% - Richtung Metropolis
+                mode = 'metropolis';
+            } else {
+                // 5% - Richtung Maria
+                mode = 'maria';
+            }
+
             spotlights.push({
                 buildingX: randomBuilding.x,
-                buildingZ: randomBuilding.z - 15000,
-                buildingTop: GROUND_LEVEL_CITY - randomBuilding.height,
-                angleXZ: random(TWO_PI),
-                angleY: random(-1.2, 1.2),
-                speedXZ: random(0.01, 0.03),
-                speedY: random(0.005, 0.015),
-                radius: random(300, 600),
-                intensity: random(200, 255)
+                buildingZ: randomBuilding.z,
+                buildingTop: CITY_RING.groundLevel - randomBuilding.height,
+                mode: mode,
+                angle: random(TWO_PI),
+                speed: random(0.002, 0.006),
+                swayAmount: random(400, 800),  // Größerer Bewegungsradius
+                baseHeight: random(2000, 3500),  // Feste Basis-Höhe für "up" mode
+                intensity: random(180, 255),
+                hue: random(40, 50)
             });
         }
     }
@@ -107,77 +174,163 @@ function generateSpotlights() {
 function draw() {
     background(40, 30, 20);
 
-    perspective(PI/3, width/height, 10, 50000);
+    perspective(PI/3, width/height, 10, 20000);
 
     ambientLight(40, 30, 30);
     directionalLight(40, 50, 60, 0, -1, 0);
 
+    // Kamera nur beim ersten Frame setzen
+    if (!cameraInitialized) {
+        camera(
+            0, 0, 300,  // Kamera Position: leicht erhöht und näher
+            0, -150, 0,         // Schaut auf den Mittelpunkt (Maria)
+            0, 1, 0          // Up-Vektor (Y ist oben)
+        );
+        cameraInitialized = true;
+    }
+
     orbitControl();
 
+    // MARIA PLATTFORM (zentral, erhöht)
+    drawMariaPlatform();
 
-    // Definiere Ebenen-Parameter (unabhängig von Maria!)
-    let frontPlane = {
-        x: 0,
-        y: GROUND_LEVEL_FRONT,
-        z: 1500,      // Kann jetzt frei angepasst werden
-        width: 10000,
-        depth: 2000,
-        color: {h: 40, s: 20, b: 20}  // Farbe definiert
-    };
+    // DURCHGÄNGIGE VERBINDUNG (schräger Ring)
+    drawConnectionRing();
 
-    let backPlane = {
-        x: 0,
-        y: GROUND_LEVEL_CITY,
-        z: -15000,
-        width: 10000,
-        depth: 10000,
-        color: {h: 40, s: 20, b: 15}
-    };
+    // STADT RING (außen herum, tiefer)
+    drawCityRing();
 
-    // VORDERE EBENE (unabhängig von Maria)
+    // GEBÄUDE auf dem Ring
+    drawBuildings();
+
+    // METROPOLIS Statue (auf dem Ring)
+    drawMetropolis();
+
+    // MARIA (zentral)
+    drawMaria();
+
+    // SCHEINWERFER - MÜSSEN ZULETZT gezeichnet werden wegen Transparenz!
+    drawSpotlights();
+
+}
+
+function drawMariaPlatform() {
     push();
-    translate(frontPlane.x, frontPlane.y, frontPlane.z);
+    translate(0, MARIA_PLATFORM.groundLevel, 0);
+    // Leicht glänzende Oberfläche für Spiegeleffekt
+    fill(40, 25, 35, 250);
+    specularMaterial(40, 30, 60);
+    shininess(100);
     noStroke();
-    box(frontPlane.width, 5, frontPlane.depth);
+    cylinder(MARIA_PLATFORM.radius, MARIA_PLATFORM.height, 24);
     pop();
+}
 
-    // SCHRÄGE
-    drawAutoRamp(frontPlane, backPlane);
+function drawConnectionRing() {
+    // Durchgängiger schräger Ring zwischen Maria-Plattform und Stadt-Ring
+    let segments = 64;  // Mehr Segmente für glatte Kurve
 
-    // HINTERE EBENE
     push();
-    translate(backPlane.x, backPlane.y, backPlane.z);
+    fill(40, 22, 25);
     noStroke();
-    box(backPlane.width, 5, backPlane.depth);
-    pop();
 
-    // GEBÄUDE
+    // Ring als TRIANGLE_STRIP von innen nach außen
+    beginShape(TRIANGLE_STRIP);
+    for (let i = 0; i <= segments; i++) {
+        let angle = map(i, 0, segments, 0, TWO_PI);
+
+        // Innerer Rand (Maria Plattform - höher)
+        let x1 = cos(angle) * MARIA_PLATFORM.radius;
+        let z1 = sin(angle) * MARIA_PLATFORM.radius;
+        let y1 = MARIA_PLATFORM.groundLevel;
+
+        // Äußerer Rand (Stadt Ring - tiefer)
+        let x2 = cos(angle) * CITY_RING.innerRadius;
+        let z2 = sin(angle) * CITY_RING.innerRadius;
+        let y2 = CITY_RING.groundLevel;
+
+        vertex(x1, y1, z1);
+        vertex(x2, y2, z2);
+    }
+    endShape();
+
+    pop();
+}
+
+function drawCityRing() {
+    push();
+    translate(0, CITY_RING.groundLevel, 0);
+    fill(40, 20, 15);
+    noStroke();
+
+    // Ring als Torus oder als einfacher Ring mit mehreren Zylindern
+    // Einfache Version: Äußerer Zylinder - Innerer Zylinder
+
+    // Äußerer Ring
+    let outerRadius = CITY_RING.radius + CITY_RING.depth/2;
+    let innerRadius = CITY_RING.innerRadius;
+    let segments = 48;
+
+    beginShape(TRIANGLE_STRIP);
+    for (let i = 0; i <= segments; i++) {
+        let angle = map(i, 0, segments, 0, TWO_PI);
+        let x1 = cos(angle) * innerRadius;
+        let z1 = sin(angle) * innerRadius;
+        let x2 = cos(angle) * outerRadius;
+        let z2 = sin(angle) * outerRadius;
+
+        vertex(x1, 0, z1);
+        vertex(x2, 0, z2);
+    }
+    endShape();
+    pop();
+}
+
+function drawBuildings() {
     for (let b of buildings) {
         push();
-        translate(b.x, GROUND_LEVEL_CITY - b.height/2, b.z - 15000);
+        translate(b.x, CITY_RING.groundLevel - b.height/2, b.z);
         fill(b.hue, b.sat, b.bright);
         noStroke();
         box(b.width, b.height, b.depth);
         pop();
     }
+}
 
-    // SCHEINWERFER
+function drawSpotlights() {
     for (let spot of spotlights) {
-        spot.angleXZ += spot.speedXZ;
-        spot.angleY += spot.speedY;
-
-        if (spot.angleY > 1.4 || spot.angleY < -1.4) {
-            spot.speedY *= -1;
-        }
+        spot.angle += spot.speed;
 
         let fromX = spot.buildingX;
         let fromY = spot.buildingTop;
         let fromZ = spot.buildingZ;
 
-        let targetX = cos(spot.angleXZ) * spot.radius;
-        let targetZ = -5000 + sin(spot.angleXZ) * spot.radius;
-        let targetY = GROUND_LEVEL_CITY - 1000 + sin(spot.angleY) * 1500;
+        let targetX, targetY, targetZ;
 
+        if (spot.mode === 'up') {
+            // Nach oben mit leichtem Schwanken - KEIN random() mehr!
+            targetX = spot.buildingX + cos(spot.angle) * spot.swayAmount;
+            targetZ = spot.buildingZ + sin(spot.angle) * spot.swayAmount;
+            targetY = CITY_RING.groundLevel - spot.baseHeight;  // Feste Höhe mit leichter Variation
+
+        } else if (spot.mode === 'metropolis') {
+            // Richtung Metropolis mit leichter Variation
+            let metroAngle = -PI/2;
+            let metroX = cos(metroAngle) * CITY_RING.radius;
+            let metroZ = sin(metroAngle) * CITY_RING.radius + 1000;
+
+            targetX = metroX + cos(spot.angle) * spot.swayAmount;
+            targetZ = metroZ + sin(spot.angle) * spot.swayAmount;
+            targetY = CITY_RING.groundLevel - 1500 + sin(spot.angle * 2) * 400;
+
+        } else if (spot.mode === 'maria') {
+            // Richtung Maria mit leichter Variation
+            targetX = cos(spot.angle) * spot.swayAmount;
+            targetZ = sin(spot.angle) * spot.swayAmount;
+            targetY = MARIA_PLATFORM.groundLevel + sin(spot.angle * 2) * 200;
+        }
+
+        // Richtungsvektor berechnen
         let dirX = targetX - fromX;
         let dirY = targetY - fromY;
         let dirZ = targetZ - fromZ;
@@ -186,108 +339,132 @@ function draw() {
         dirY /= dirLength;
         dirZ /= dirLength;
 
+        // Raycast für Kollisionserkennung
         let hitPoint = raycastHit(fromX, fromY, fromZ, dirX, dirY, dirZ);
-
-        push();
-        stroke(45, 80, spot.intensity, 120);
-        strokeWeight(8);
-        line(fromX, fromY, fromZ, hitPoint.x, hitPoint.y, hitPoint.z);
-        pop();
-
         let hitDistance = dist(fromX, fromY, fromZ, hitPoint.x, hitPoint.y, hitPoint.z);
-        if (hitDistance < 2900) {
+
+        // Vereinfachter Kegel - nur 4 Seiten + weniger Segmente
+        let segments = 3;  // Nur 3 Segmente statt 8
+        let sides = 4;     // Nur 4 Seiten (Quadrat) statt Kreis
+
+        for (let i = 0; i < segments; i++) {
+            let t1 = i / segments;
+            let t2 = (i + 1) / segments;
+
+            let x1 = fromX + dirX * hitDistance * t1;
+            let y1 = fromY + dirY * hitDistance * t1;
+            let z1 = fromZ + dirZ * hitDistance * t1;
+
+            let x2 = fromX + dirX * hitDistance * t2;
+            let y2 = fromY + dirY * hitDistance * t2;
+            let z2 = fromZ + dirZ * hitDistance * t2;
+
+            let radius1 = t1 * 40;
+            let radius2 = t2 * 40;
+
+            let alpha1 = (1 - t1) * spot.intensity * 0.5;
+            let alpha2 = (1 - t2) * spot.intensity * 0.5;
+
             push();
-            translate(hitPoint.x, hitPoint.y, hitPoint.z);
-            fill(45, 100, 100, 200);
             noStroke();
-            sphere(20);
-            pointLight(45, 100, spot.intensity, 0, 0, 0);
+
+            for (let j = 0; j < sides; j++) {
+                let angle1 = (j / sides) * TWO_PI;
+                let angle2 = ((j + 1) / sides) * TWO_PI;
+
+                beginShape();
+                fill(spot.hue, 80, 100, alpha1);
+                vertex(x1 + cos(angle1) * radius1, y1, z1 + sin(angle1) * radius1);
+                vertex(x1 + cos(angle2) * radius1, y1, z1 + sin(angle2) * radius1);
+
+                fill(spot.hue, 80, 100, alpha2);
+                vertex(x2 + cos(angle2) * radius2, y2, z2 + sin(angle2) * radius2);
+                vertex(x2 + cos(angle1) * radius2, y2, z2 + sin(angle1) * radius2);
+                endShape(CLOSE);
+            }
             pop();
         }
 
+        // Lichtquelle am Gebäude
         push();
         translate(fromX, fromY, fromZ);
-        pointLight(45, 80, spot.intensity * 0.5, 0, 0, 0);
+        fill(spot.hue, 100, spot.intensity, 200);
+        noStroke();
+        sphere(15);
+        pointLight(spot.hue, 80, spot.intensity * 0.7, 0, 0, 0);
         pop();
-    }
 
-    // METROPOLIS
+        // Lichtspot am Aufprallpunkt - AUSKOMMENTIERT
+        /*
+        if (hitDistance < 8000) {
+            push();
+            translate(hitPoint.x, hitPoint.y, hitPoint.z);
+            fill(spot.hue, 100, 100, 100);
+            noStroke();
+            sphere(25);  // <-- DIESE KUGEL AM ENDE
+            pointLight(spot.hue, 100, spot.intensity, 0, 0, 0);
+            pop();
+        }
+        */
+    }
+}
+
+function drawMetropolis() {
+    if (!metropolis) return;
+
+    // Metropolis auf dem Ring platzieren - HINTER Maria
+    let metroAngle = -PI/2;  // -90° = hinter Maria (negative Z-Achse)
+    let metroX = cos(metroAngle) * CITY_RING.radius;
+    let metroZ = sin(metroAngle) * CITY_RING.radius +1000;
+
     push();
-    translate(0, GROUND_LEVEL_CITY - 3500, -15000);
+    translate(metroX, CITY_RING.groundLevel - 1500, metroZ);
     rotateX(PI);
-    scale(35);
+    rotateY(metroAngle + PI/2);  // Zur Mitte ausgerichtet
+    scale(METROPOLIS_SCALE);
     noStroke();
     ambientMaterial(45, 60, 90);
     specularMaterial(45, 80, 100);
     shininess(50);
-    if (metropolis) {
-        model(metropolis);
-    }
+    model(metropolis);
     pop();
+}
 
-    // MARIA - unabhängige Position!
+function drawMaria() {
+    if (!maria) return;
+
     push();
     translate(MARIA_POS.x, MARIA_POS.y, MARIA_POS.z);
     rotateX(PI);
     rotateY(PI);
-    scale(25);
+    scale(MARIA_SCALE);
     noStroke();
-    ambientMaterial(45, 40, 80);
-    specularMaterial(45, 60, 100);
-    shininess(150);
-    if (maria) {
-        model(maria);
-    }
+    // Reflektierendes Metall-Material (wie Chrom)
+    ambientMaterial(45, 20, 60);  // Dunkler ambient
+    specularMaterial(0, 0, 100);  // Sehr helles specular (fast weiß)
+    shininess(400);  // Sehr hohe shininess für Chrom-Effekt
+    model(maria);
     pop();
 }
 
-function drawAutoRamp(frontPlane, backPlane) {
-    // Berechne Eckpunkte der vorderen Ebene (hintere Kante)
-    let frontZ = frontPlane.z - frontPlane.depth/2;
-    let frontLeft = {
-        x: frontPlane.x - frontPlane.width/2,
-        y: frontPlane.y,
-        z: frontZ
-    };
-    let frontRight = {
-        x: frontPlane.x + frontPlane.width/2,
-        y: frontPlane.y,
-        z: frontZ
-    };
-
-    // Berechne Eckpunkte der hinteren Ebene (vordere Kante)
-    let backZ = backPlane.z + backPlane.depth/2;
-    let backLeft = {
-        x: backPlane.x - backPlane.width/2,
-        y: backPlane.y,
-        z: backZ
-    };
-    let backRight = {
-        x: backPlane.x + backPlane.width/2,
-        y: backPlane.y,
-        z: backZ
-    };
-
-    push();
-    noStroke();
-    beginShape();
-    vertex(frontLeft.x, frontLeft.y, frontLeft.z);
-    vertex(frontRight.x, frontRight.y, frontRight.z);
-    vertex(backRight.x, backRight.y, backRight.z);
-    vertex(backLeft.x, backLeft.y, backLeft.z);
-    endShape(CLOSE);
-    pop();
+function windowResized() {
+    resizeCanvas(windowWidth, windowHeight);
 }
 
 function raycastHit(startX, startY, startZ, dirX, dirY, dirZ) {
-    let maxDist = 3000;
-    let closestHit = {x: startX + dirX * maxDist, y: startY + dirY * maxDist, z: startZ + dirZ * maxDist};
+    let maxDist = 8000;
+    let closestHit = {
+        x: startX + dirX * maxDist,
+        y: startY + dirY * maxDist,
+        z: startZ + dirZ * maxDist
+    };
     let closestDist = maxDist;
 
+    // Gebäude
     for (let b of buildings) {
         let bx = b.x;
-        let by = GROUND_LEVEL_CITY - b.height/2;
-        let bz = b.z - 5000;
+        let by = CITY_RING.groundLevel - b.height/2;
+        let bz = b.z;
 
         let hit = rayAABBIntersection(
             startX, startY, startZ,
@@ -302,6 +479,7 @@ function raycastHit(startX, startY, startZ, dirX, dirY, dirZ) {
         }
     }
 
+    // Metropolis
     if (metropolisBBox) {
         let metroHit = rayAABBIntersection(
             startX, startY, startZ,
@@ -316,6 +494,7 @@ function raycastHit(startX, startY, startZ, dirX, dirY, dirZ) {
         }
     }
 
+    // Maria
     if (mariaBBox) {
         let mariaHit = rayAABBIntersection(
             startX, startY, startZ,
@@ -330,21 +509,58 @@ function raycastHit(startX, startY, startZ, dirX, dirY, dirZ) {
         }
     }
 
-    // Kollision mit vorderer Ebene
+    // Kollision mit Stadt Ring
     if (dirY > 0) {
-        let t = (GROUND_LEVEL_FRONT - startY) / dirY;
+        let t = (CITY_RING.groundLevel - startY) / dirY;
         if (t > 0 && t < closestDist) {
-            closestDist = t;
-            closestHit = {x: startX + dirX * t, y: GROUND_LEVEL_FRONT, z: startZ + dirZ * t};
+            let hitX = startX + dirX * t;
+            let hitZ = startZ + dirZ * t;
+            let distFromCenter = sqrt(hitX*hitX + hitZ*hitZ);
+
+            if (distFromCenter > CITY_RING.innerRadius &&
+                distFromCenter < CITY_RING.radius + CITY_RING.depth/2) {
+                closestDist = t;
+                closestHit = {x: hitX, y: CITY_RING.groundLevel, z: hitZ};
+            }
         }
     }
 
-    // Kollision mit hinterer Ebene
+    // Kollision mit Maria Plattform
     if (dirY > 0) {
-        let t = (GROUND_LEVEL_CITY - startY) / dirY;
+        let t = (MARIA_PLATFORM.groundLevel - startY) / dirY;
         if (t > 0 && t < closestDist) {
-            closestDist = t;
-            closestHit = {x: startX + dirX * t, y: GROUND_LEVEL_CITY, z: startZ + dirZ * t};
+            let hitX = startX + dirX * t;
+            let hitZ = startZ + dirZ * t;
+            let distFromCenter = sqrt(hitX*hitX + hitZ*hitZ);
+
+            if (distFromCenter < MARIA_PLATFORM.radius) {
+                closestDist = t;
+                closestHit = {x: hitX, y: MARIA_PLATFORM.groundLevel, z: hitZ};
+            }
+        }
+    }
+
+    // Kollision mit Verbindungsring (schräge Fläche)
+    let hitX = startX + dirX * maxDist;
+    let hitZ = startZ + dirZ * maxDist;
+    let distFromCenter = sqrt(hitX*hitX + hitZ*hitZ);
+
+    if (distFromCenter >= MARIA_PLATFORM.radius && distFromCenter <= CITY_RING.innerRadius) {
+        let t = (distFromCenter - MARIA_PLATFORM.radius) / (CITY_RING.innerRadius - MARIA_PLATFORM.radius);
+        let slopeY = lerp(MARIA_PLATFORM.groundLevel, CITY_RING.groundLevel, t);
+
+        if (dirY > 0) {
+            let tSlope = (slopeY - startY) / dirY;
+            if (tSlope > 0 && tSlope < closestDist) {
+                let testX = startX + dirX * tSlope;
+                let testZ = startZ + dirZ * tSlope;
+                let testDist = sqrt(testX*testX + testZ*testZ);
+
+                if (testDist >= MARIA_PLATFORM.radius && testDist <= CITY_RING.innerRadius) {
+                    closestDist = tSlope;
+                    closestHit = {x: testX, y: slopeY, z: testZ};
+                }
+            }
         }
     }
 
@@ -383,80 +599,4 @@ function rayAABBIntersection(rayX, rayY, rayZ, dirX, dirY, dirZ, minX, minY, min
             z: rayZ + dirZ * tMin
         }
     };
-}
-
-function drawLightRays() {
-    push();
-    translate(0, GROUND_LEVEL_CITY - 500, -5000);
-
-    for (let i = 0; i < 12; i++) {
-        push();
-        rotateY(i * TWO_PI / 12);
-        fill(45, 80, 80, 30);
-        noStroke();
-        beginShape();
-        vertex(0, 0, 0);
-        vertex(2000, 0, 100);
-        vertex(2000, -2000, 100);
-        endShape(CLOSE);
-        pop();
-    }
-    pop();
-}
-
-function drawPerlinFog() {
-    push();
-    translate(0, GROUND_LEVEL_CITY - 400, -3000);
-    rotateX(PI/2);
-    noStroke();
-
-    let gridSize = 50;
-    let scale_noise = 0.01;
-
-    for (let x = -10; x < 10; x++) {
-        for (let y = -10; y < 10; y++) {
-            let noiseVal = noise(
-                x * scale_noise + frameCount * 0.001,
-                y * scale_noise + frameCount * 0.001
-            );
-
-            let alpha = map(noiseVal, 0, 1, 10, 60);
-            fill(40, 20, 60, alpha);
-
-            push();
-            translate(x * gridSize, y * gridSize, 0);
-            plane(gridSize, gridSize);
-            pop();
-        }
-    }
-    pop();
-}
-
-function drawPerlinFog_Front() {
-    push();
-    translate(0, GROUND_LEVEL_FRONT - 200, -500);
-    rotateX(PI/2);
-    noStroke();
-
-    let gridSize = 40;
-    let scale_noise = 0.015;
-
-    for (let x = -8; x < 8; x++) {
-        for (let y = -8; y < 8; y++) {
-            let noiseVal = noise(
-                x * scale_noise + frameCount * 0.002,
-                y * scale_noise + frameCount * 0.002,
-                2000
-            );
-
-            let alpha = map(noiseVal, 0, 1, 15, 70);
-            fill(40, 25, 55, alpha);
-
-            push();
-            translate(x * gridSize, y * gridSize, 0);
-            plane(gridSize, gridSize);
-            pop();
-        }
-    }
-    pop();
 }
