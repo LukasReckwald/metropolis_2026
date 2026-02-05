@@ -192,8 +192,8 @@ function draw() {
     // Kamera
     if (!cameraInitialized) {
         camera(
-            0, 0, 300,
-            0, -150, 0,
+            0, -110, 100,   // Kamera ist 200 Einheiten höher
+            0, -130, 0,     // Zielpunkt ist AUCH 200 Einheiten höher
             0, 1, 0
         );
         cameraInitialized = true;
