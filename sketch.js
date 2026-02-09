@@ -178,6 +178,15 @@ function generateFog() {
     let minRadius = CITY_RING.innerRadius;
     let numLayers = 3;
 
+    let stratfog = new FogLayer(
+        fogImage,
+        -100,
+        100,
+        500,
+        0.0005
+    );
+    fogLayers.push(stratfog);
+
     for (let i = 0; i < numLayers; i++) {
 
         let radiusProgress = i / (numLayers - 1);
