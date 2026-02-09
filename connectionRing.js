@@ -1,6 +1,6 @@
 ﻿class ConnectionRing {
     constructor() {
-        this.segments = 64;
+        this.segments = 100;
         this.color = {h: 40, s: 20, b: 15};
         this.startAngle = 5 * PI / 4;
         this.endAngle = 7 * PI / 4;

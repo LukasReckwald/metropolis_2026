@@ -1,6 +1,6 @@
 ﻿class CityRing {
     constructor() {
-        this.segments = 48;
+        this.segments = 100;
         this.color = {h: 40, s: 20, b: 15};
         this.startAngle = 5 * PI / 4;
         this.endAngle = 7 * PI / 4;
