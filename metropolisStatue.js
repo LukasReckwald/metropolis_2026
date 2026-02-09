@@ -2,7 +2,6 @@
     constructor(model, scale, cityRingRadius, cityRingGroundLevel) {
         this.model = model;
         this.scale = scale;
-
         let angle = -PI/2;
         this.position = {
             x: cos(angle) * cityRingRadius,
@@ -11,45 +10,20 @@
         };
         this.rotation = angle;
 
-        // Material Einstellungen
-        this.material = {
-            ambient: {h: 45, s: 60, b: 90},
-            specular: {h: 45, s: 80, b: 100},
-            shininess: 100
-        };
-
         this.boundingBox = this.calculateBoundingBox();
     }
 
     calculateBoundingBox() {
-        if (!this.model || !this.model.vertices) {
-            return {minX: -100, maxX: 100, minY: -100, maxY: 100, minZ: -100, maxZ: 100};
-        }
 
-        let minX = Infinity, maxX = -Infinity;
-        let minY = Infinity, maxY = -Infinity;
-        let minZ = Infinity, maxZ = -Infinity;
-
-        for (let v of this.model.vertices) {
-            let x = v.x * this.scale;
-            let y = v.y * this.scale;
-            let z = v.z * this.scale;
-
-            minX = min(minX, x);
-            maxX = max(maxX, x);
-            minY = min(minY, y);
-            maxY = max(maxY, y);
-            minZ = min(minZ, z);
-            maxZ = max(maxZ, z);
-        }
+        let bbox = this.model.calculateBoundingBox();
 
         return {
-            minX: minX + this.position.x,
-            maxX: maxX + this.position.x,
-            minY: -maxY + this.position.y,
-            maxY: -minY + this.position.y,
-            minZ: minZ + this.position.z,
-            maxZ: maxZ + this.position.z
+            minX: bbox.min.x * this.scale + this.position.x,
+            maxX: bbox.max.x * this.scale + this.position.x,
+            minY: bbox.min.y * this.scale + this.position.y,
+            maxY: bbox.max.y * this.scale + this.position.y,
+            minZ: bbox.min.z * this.scale + this.position.z,
+            maxZ: bbox.max.z * this.scale + this.position.z
         };
     }
 
@@ -65,11 +39,9 @@
         rotateX(PI);
         rotateY(this.rotation + PI/2);
         scale(this.scale);
+        ambientLight(0, 0, 5);
         noStroke();
-
-        ambientMaterial(this.material.ambient.h, this.material.ambient.s, this.material.ambient.b);
-        specularMaterial(this.material.specular.h, this.material.specular.s, this.material.specular.b);
-        shininess(this.material.shininess);
+        fill(0, 0, 10);
 
         model(this.model);
         pop();

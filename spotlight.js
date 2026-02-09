@@ -1,25 +1,25 @@
 ﻿class Spotlight {
     constructor(building, mode, metropolisStatue, mariaPlatformGroundLevel, cityRingGroundLevel) {
-        this.buildingX = building.x;
-        this.buildingZ = building.z;
-        this.buildingTop = building.groundLevel - building.height;
+        this.position = createVector(building.x, building.groundLevel - building.height, building.z);
 
-        this.mode = mode; // 'up', 'metropolis', 'maria'
+        this.mode = mode;
+
         this.angle = random(TWO_PI);
         this.speed = random(0.002, 0.006);
         this.swayAmount = random(400, 800);
         this.baseHeight = random(2000, 3500);
-        this.intensity = random(180, 255);
-        this.hue = random(40, 50);
 
-        // Kegel-Parameter
-        this.coneSegments = 1;
-        this.coneSides = 4;
+        this.hue = random(40, 50);
+        this.intensity = random(100, 140);
         this.maxRadius = 100;
-        this.alpha = 0.5;
+        this.alpha = 0.01;
+        this.segments = 50;
+
+        if (mode === 'v-left' || mode === 'v-right') {
+            this.maxRadius = 50;
+        }
 
         this.metropolisStatue = metropolisStatue;
-        this.mariaPlatformGroundLevel = mariaPlatformGroundLevel;
         this.cityRingGroundLevel = cityRingGroundLevel;
     }
 
@@ -27,102 +27,94 @@
         this.angle += this.speed;
     }
 
+    //Scheinwerfer Richtung
     getTargetPosition() {
-        let targetX, targetY, targetZ;
-
         if (this.mode === 'up') {
-            targetX = this.buildingX + cos(this.angle) * this.swayAmount;
-            targetZ = this.buildingZ + sin(this.angle) * this.swayAmount;
-            targetY = this.cityRingGroundLevel - this.baseHeight;
-
-        } else if (this.mode === 'metropolis') {
-            let metroPos = this.metropolisStatue.getPosition();
-            targetX = metroPos.x + cos(this.angle) * this.swayAmount;
-            targetZ = metroPos.z + sin(this.angle) * this.swayAmount;
-            targetY = metroPos.y + sin(this.angle * 2) * 400;
-
-        } else if (this.mode === 'maria') {
-            targetX = cos(this.angle) * this.swayAmount;
-            targetZ = sin(this.angle) * this.swayAmount;
-            targetY = this.mariaPlatformGroundLevel + sin(this.angle * 2) * 200;
+            return createVector(
+                this.position.x + cos(this.angle) * this.swayAmount,
+                this.cityRingGroundLevel - this.baseHeight,
+                this.position.z + sin(this.angle) * this.swayAmount
+            );
         }
 
-        return {x: targetX, y: targetY, z: targetZ};
+        if (this.mode === 'metropolis') {
+            let metroPos = this.metropolisStatue.position;
+            return createVector(
+                metroPos.x + cos(this.angle) * this.swayAmount,
+                metroPos.y + sin(this.angle * 2) * 400,
+                metroPos.z + sin(this.angle) * this.swayAmount
+            );
+        }
+
+        if (this.mode === 'v-left') {
+            return createVector(
+                -800 + cos(this.angle) * this.swayAmount * 0.5,
+                this.cityRingGroundLevel - this.baseHeight,
+                -1000 + sin(this.angle) * this.swayAmount * 0.4
+            );
+        }
+
+        if (this.mode === 'v-right') {
+            return createVector(
+                800 + cos(this.angle) * this.swayAmount * 0.5,
+                this.cityRingGroundLevel - this.baseHeight,
+                -1000 + sin(this.angle) * this.swayAmount * 0.4
+            );
+        }
     }
 
     draw(raycastFunction) {
-        let fromX = this.buildingX;
-        let fromY = this.buildingTop;
-        let fromZ = this.buildingZ;
-
         let target = this.getTargetPosition();
 
-        // Richtungsvektor
-        let dirX = target.x - fromX;
-        let dirY = target.y - fromY;
-        let dirZ = target.z - fromZ;
-        let dirLength = sqrt(dirX*dirX + dirY*dirY + dirZ*dirZ);
-        dirX /= dirLength;
-        dirY /= dirLength;
-        dirZ /= dirLength;
+        let direction = p5.Vector.sub(target, this.position);
+        direction.normalize();
 
-        let hitPoint = raycastFunction(fromX, fromY, fromZ, dirX, dirY, dirZ);
-        let hitDistance = dist(fromX, fromY, fromZ, hitPoint.x, hitPoint.y, hitPoint.z);
+        let hitPoint = raycastFunction(
+            this.position.x, this.position.y, this.position.z,
+            direction.x, direction.y, direction.z
+        );
 
-        // Zeichne Kegel
-        this.drawCone(fromX, fromY, fromZ, dirX, dirY, dirZ, hitDistance);
+        let hitDistance = dist(
+            this.position.x, this.position.y, this.position.z,
+            hitPoint.x, hitPoint.y, hitPoint.z
+        );
 
-        // Lichtquelle am Gebäude
-        this.drawLightSource(fromX, fromY, fromZ);
-    }
 
-    drawCone(fromX, fromY, fromZ, dirX, dirY, dirZ, distance) {
-        for (let i = 0; i < this.coneSegments; i++) {
-            let t1 = i / this.coneSegments;
-            let t2 = (i + 1) / this.coneSegments;
-
-            let x1 = fromX + dirX * distance * t1;
-            let y1 = fromY + dirY * distance * t1;
-            let z1 = fromZ + dirZ * distance * t1;
-
-            let x2 = fromX + dirX * distance * t2;
-            let y2 = fromY + dirY * distance * t2;
-            let z2 = fromZ + dirZ * distance * t2;
-
-            let radius1 = t1 * this.maxRadius;
-            let radius2 = t2 * this.maxRadius;
-
-            let alpha1 = (1 - t1) * this.intensity * this.alpha;
-            let alpha2 = (1 - t2) * this.intensity * this.alpha;
-
-            push();
-            noStroke();
-
-            for (let j = 0; j < this.coneSides; j++) {
-                let angle1 = (j / this.coneSides) * TWO_PI;
-                let angle2 = ((j + 1) / this.coneSides) * TWO_PI;
-
-                beginShape();
-                fill(this.hue, 80, 100, alpha1);
-                vertex(x1 + cos(angle1) * radius1, y1, z1 + sin(angle1) * radius1);
-                vertex(x1 + cos(angle2) * radius1, y1, z1 + sin(angle2) * radius1);
-
-                fill(this.hue, 80, 100, alpha2);
-                vertex(x2 + cos(angle2) * radius2, y2, z2 + sin(angle2) * radius2);
-                vertex(x2 + cos(angle1) * radius2, y2, z2 + sin(angle1) * radius2);
-                endShape(CLOSE);
-            }
-            pop();
+        if (this.mode === 'v-left' || this.mode === 'v-right') { // V-Scheinwerfer haben kürzere Reichweite (aesthetisch)
+            hitDistance = min(hitDistance, 1000);
         }
+
+        this.drawCone(this.position, direction, hitDistance);
     }
 
-    drawLightSource(x, y, z) {
+    drawCone(startPos, direction, distance) {
         push();
-        translate(x, y, z);
-        fill(this.hue, 100, this.intensity, 200);
         noStroke();
-        sphere(15);
-        pointLight(this.hue, 80, this.intensity * 0.7, 0, 0, 0);
+
+        let startTransparency = (this.mode === 'v-left' || this.mode === 'v-right') ? 0.3 : 0.5;
+        let startAlpha = startTransparency * this.intensity * this.alpha;
+
+        let endPos = p5.Vector.add(startPos, p5.Vector.mult(direction, distance));
+
+        for (let i = 0; i < this.segments; i++) {
+            let angle1 = map(i, 0, this.segments, 0, TWO_PI);
+            let angle2 = map(i + 1, 0, this.segments, 0, TWO_PI);
+
+            beginShape();
+
+            //start
+            fill(this.hue, 80, 100, startAlpha);
+            vertex(startPos.x, startPos.y, startPos.z);
+            vertex(startPos.x, startPos.y, startPos.z);
+
+            //ende
+            fill(this.hue, 80, 100, 0);
+            vertex(endPos.x + cos(angle2) * this.maxRadius, endPos.y, endPos.z + sin(angle2) * this.maxRadius);
+            vertex(endPos.x + cos(angle1) * this.maxRadius, endPos.y, endPos.z + sin(angle1) * this.maxRadius);
+
+            endShape(CLOSE);
+        }
+
         pop();
     }
 }
