@@ -5,7 +5,7 @@
         this.mode = mode;
 
         this.angle = random(TWO_PI);
-        this.speed = random(0.002, 0.006);
+        this.speed = random(0.004, 0.008);
         this.swayAmount = random(400, 800);
         this.baseHeight = random(2000, 3500);
 
