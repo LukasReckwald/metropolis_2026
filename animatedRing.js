@@ -1,4 +1,4 @@
-﻿class AnimatedRingSet {
+﻿class AnimatedRing {
     constructor() {
         this.lowestPoint = -125;
         this.highestPoint = 100;

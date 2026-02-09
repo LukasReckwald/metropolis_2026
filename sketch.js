@@ -58,7 +58,7 @@ async function setup() {
 
     generateBuildings();
     generateSpotlights();
-    generateAnimatedRingSets();
+    generateAnimatedRingSet();
     generateFog();
 }
 
@@ -136,6 +136,7 @@ function generateSpotlights() {
         }
     }
 
+    //Scheinwerfer hinter Maria
     let behindMariaDistance = -200;
 
     let vSpotlight = {
@@ -162,11 +163,11 @@ function generateSpotlights() {
     ));
 }
 
-function generateAnimatedRingSets() {
+function generateAnimatedRingSet() {
     animatedRingSets = [];
 
     for (let i = 0; i < 4; i++) {
-        animatedRingSets.push(new AnimatedRingSet());
+        animatedRingSets.push(new AnimatedRing());
     }
 }
 
@@ -187,12 +188,12 @@ function generateFog() {
             -650,
             radius,
             1500,
-            random(0.001, 0.003) * (random() > 0.5 ? 1 : -1)
+            random(0.001, 0.003) * (random() > 0.5 ? 1 : -1) //Wechselnde Drehrichtung
         );
         fogLayers.push(fog);
     }
 
-    fogLayers.sort((a, b) => b.radius - a.radius); // Lösung für Render-Reihenfolge
+    fogLayers.sort((a, b) => b.radius - a.radius); //Lösung für Render-Reihenfolge
 }
 
 function draw() {
