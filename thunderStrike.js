@@ -2,36 +2,39 @@ class ThunderStrike {
     constructor() {
         this.bolts = [];
         this.flashIntensity = 0;
-        this.minInterval = 60;   // ~3 Sekunden bei 60fps
-        this.maxInterval = 120;   // ~10 Sekunden
-        this.nextStrike = floor(random(60, this.minInterval)); //Erster Blitz kommt schneller
+        this.minInterval = 3000; //ms
+        this.maxInterval = 10000; //ms
+        this.nextStrike = 1000; //Erster Blitz kommt schneller
         this.timer = 0;
-        this.flashDecay = 0.88;
+        this.flashDecay = 0.88; //pro Frame bei 60 FPS
+        this.boltFadeSpeed = 3.6; //Lebensdauer pro Sekunde
         this.enabled = true;
     }
 
     update() {
         if (!this.enabled) return;
 
-        this.timer++;
+        //Zeitbasiert, damit Blitze unabhängig von der Framerate gleich wirken
+        let dt = frameDelta();
+        this.timer += dt;
 
         if (this.timer >= this.nextStrike) {
             this.trigger();
             this.timer = 0;
-            this.nextStrike = floor(random(this.minInterval, this.maxInterval));
+            this.nextStrike = random(this.minInterval, this.maxInterval);
         }
 
-        this.flashIntensity *= this.flashDecay;
+        this.flashIntensity *= pow(this.flashDecay, dt / (1000 / 60));
         if (this.flashIntensity < 0.01) this.flashIntensity = 0;
 
         for (let bolt of this.bolts) {
-            bolt.life -= 0.06;
+            bolt.life -= this.boltFadeSpeed * dt / 1000;
         }
         this.bolts = this.bolts.filter(b => b.life > 0);
     }
 
     trigger() {
-        let angle = random(5 * PI / 4, 7 * PI / 4);
+        let angle = random(CITY_RING.startAngle, CITY_RING.endAngle);
         let radius = random(CITY_RING.innerRadius, CITY_RING.radius + CITY_RING.depth / 2);
 
         let startX = cos(angle) * radius;
@@ -123,7 +126,7 @@ class ThunderStrike {
         for (let bolt of this.bolts) {
             let alpha = bolt.life;
 
-            //Aeusserer Schein
+            //Äußerer Schein
             strokeWeight(14);
             stroke(45, 20, 80, alpha * 0.25);
             this.drawPath(bolt.main);

@@ -14,7 +14,6 @@
     }
 
     calculateBoundingBox() {
-
         let bbox = this.model.calculateBoundingBox();
 
         return {
@@ -25,10 +24,6 @@
             minZ: bbox.min.z * this.scale + this.position.z,
             maxZ: bbox.max.z * this.scale + this.position.z
         };
-    }
-
-    getPosition() {
-        return this.position;
     }
 
     draw() {

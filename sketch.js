@@ -2,7 +2,10 @@ const CITY_RING = {
     radius: 5000,
     innerRadius: 1800,
     groundLevel: -100,
-    depth: 1200
+    depth: 1200,
+    //Winkelbereich des Stadtsegments (Math.PI, da p5-Konstanten hier noch nicht existieren)
+    startAngle: 5 * Math.PI / 4,
+    endAngle: 7 * Math.PI / 4
 };
 
 const MARIA_PLATFORM = {
@@ -20,20 +23,32 @@ let mariaPlatform;
 let connectionRing;
 let cityRing;
 let buildings = [];
+let buildingBodies;
+let buildingWindows;
 let spotlights = [];
-let animatedRingSets = [];
+let animatedRings = [];
 let fogLayers = [];
 let thunderStrike;
-let fogImage;
+let fogTexture;
 let metropolisFont;
 let metropolisTextModel;
 let fixedTextCamera = true;
 
+//Vergangene Zeit seit dem letzten Frame in ms (begrenzt, damit Ruckler nicht springen)
+function frameDelta() {
+    return min(deltaTime, 100);
+}
+
+//Faktor relativ zu 60 FPS, für Animationen, die pro Frame definiert sind
+function frameFactor() {
+    return frameDelta() / (1000 / 60);
+}
 
 async function setup() {
     let { w, h } = calculateCanvasSize();
 
     createCanvas(w, h, WEBGL);
+    pixelDensity(1); //Auf HiDPI-Displays sonst 4x so viele Pixel für Nebel & Transparenz
     colorMode(HSB);
     setAttributes('alpha', true);
 
@@ -41,7 +56,8 @@ async function setup() {
     let metropolisModel = await loadModel('models/Metropolis.obj', true);
     metropolisFont = await loadFont('font/Metropolis.ttf');
 
-    fogImage = await loadImage('images/white-fog.png');
+    let fogImage = await loadImage('images/white-fog.png');
+    fogTexture = FogLayer.createSeamlessTexture(fogImage);
 
     metropolisTextModel = metropolisFont.textToModel('METROPOLIS', 50, 0, {
         sampleFactor: 10,
@@ -58,8 +74,9 @@ async function setup() {
     cityRing = new CityRing();
 
     generateBuildings();
+    bakeBuildingGeometry();
     generateSpotlights();
-    generateAnimatedRingSet();
+    generateAnimatedRings();
     generateFog();
 
     thunderStrike = new ThunderStrike();
@@ -78,7 +95,7 @@ function generateBuildings() {
         let building;
 
         while (!validBuilding && attempts < 50) {
-            let angle = random(5 * PI / 4, 7 * PI / 4);
+            let angle = random(CITY_RING.startAngle, CITY_RING.endAngle);
             let radius = random(CITY_RING.innerRadius + 50, outerRadius - 50);
 
             let x = cos(angle) * radius;
@@ -117,6 +134,39 @@ function generateBuildings() {
             buildings.push(building);
         }
     }
+}
+
+//Alle Gebäude einmalig zu zwei statischen Modellen zusammenfassen,
+//statt jedes Frame tausende Fenster einzeln zu zeichnen
+function bakeBuildingGeometry() {
+    buildingBodies = buildGeometry(() => {
+        noStroke();
+        for (let building of buildings) {
+            building.addBody();
+        }
+    });
+
+    buildingWindows = buildGeometry(() => {
+        noStroke();
+        for (let building of buildings) {
+            building.addWindows();
+        }
+    });
+}
+
+function drawBuildings() {
+    push();
+    noStroke();
+    ambientLight(0, 0, 5);
+    model(buildingBodies);
+    pop();
+
+    //Fenster leuchten selbst und ignorieren die Beleuchtung
+    push();
+    noStroke();
+    noLights();
+    model(buildingWindows);
+    pop();
 }
 
 function generateSpotlights() {
@@ -166,11 +216,11 @@ function generateSpotlights() {
     ));
 }
 
-function generateAnimatedRingSet() {
-    animatedRingSets = [];
+function generateAnimatedRings() {
+    animatedRings = [];
 
     for (let i = 0; i < 4; i++) {
-        animatedRingSets.push(new AnimatedRing());
+        animatedRings.push(new AnimatedRing());
     }
 }
 
@@ -182,7 +232,7 @@ function generateFog() {
     let numLayers = 3;
 
     let stratfog = new FogLayer(
-        fogImage,
+        fogTexture,
         -100,
         100,
         500,
@@ -196,7 +246,7 @@ function generateFog() {
         let radius = lerp(minRadius, maxRadius, radiusProgress);
 
         let fog = new FogLayer(
-            fogImage,
+            fogTexture,
             -650,
             radius,
             1500,
@@ -228,16 +278,14 @@ function draw() {
     connectionRing.draw();
     cityRing.draw();
 
-    for (let building of buildings) {
-        building.draw();
-    }
+    drawBuildings();
 
     metropolisStatue.draw();
     mariaStatue.draw();
 
-    for (let ringSet of animatedRingSets) {
-        ringSet.update();
-        ringSet.draw();
+    for (let ring of animatedRings) {
+        ring.update();
+        ring.draw();
     }
 
     push();
@@ -252,7 +300,6 @@ function draw() {
     scale(38);
     model(metropolisTextModel);
     pop();
-
 
     for (let spotlight of spotlights) {
         spotlight.update();
@@ -326,8 +373,8 @@ function keyPressed() {
     }
 
     if (key === 'l' || key === 'L') {
-        for (let ringSet of animatedRingSets) {
-            ringSet.toggle();
+        for (let ring of animatedRings) {
+            ring.toggle();
         }
     }
 
@@ -340,6 +387,7 @@ function windowResized() {
     let { w, h } = calculateCanvasSize();
     resizeCanvas(w, h);
 }
+
 function calculateCanvasSize() {
     let windowW = window.innerWidth;
     let windowH = window.innerHeight;

@@ -5,7 +5,7 @@
         this.mode = mode;
 
         this.angle = random(TWO_PI);
-        this.speed = random(0.004, 0.008);
+        this.speed = random(0.12, 0.24); //Radiant pro Sekunde
         this.swayAmount = random(400, 800);
         this.baseHeight = random(2000, 3500);
 
@@ -24,7 +24,8 @@
     }
 
     update() {
-        this.angle += this.speed;
+        //Zeitbasiert, damit die Geschwindigkeit nicht von der Framerate abhängt
+        this.angle += this.speed * frameDelta() / 1000;
     }
 
     //Scheinwerfer Richtung
@@ -96,24 +97,22 @@
 
         let endPos = p5.Vector.add(startPos, p5.Vector.mult(direction, distance));
 
+        //Ein Shape für den ganzen Kegel: pro Segment ein Dreieck von der Lampe zum Rand
+        beginShape(TRIANGLES);
         for (let i = 0; i < this.segments; i++) {
             let angle1 = map(i, 0, this.segments, 0, TWO_PI);
             let angle2 = map(i + 1, 0, this.segments, 0, TWO_PI);
 
-            beginShape();
-
             //start
             fill(this.hue, 80, 100, startAlpha);
-            vertex(startPos.x, startPos.y, startPos.z);
             vertex(startPos.x, startPos.y, startPos.z);
 
             //ende
             fill(this.hue, 80, 100, 0);
             vertex(endPos.x + cos(angle2) * this.maxRadius, endPos.y, endPos.z + sin(angle2) * this.maxRadius);
             vertex(endPos.x + cos(angle1) * this.maxRadius, endPos.y, endPos.z + sin(angle1) * this.maxRadius);
-
-            endShape(CLOSE);
         }
+        endShape();
 
         pop();
     }

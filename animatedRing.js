@@ -16,7 +16,7 @@
     }
 
     update() {
-        this.angle += this.speed;
+        this.angle += this.speed * frameFactor();
     }
 
     toggle() {

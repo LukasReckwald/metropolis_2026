@@ -2,8 +2,8 @@
     constructor() {
         this.segments = 100;
         this.color = {h: 40, s: 20, b: 15};
-        this.startAngle = 5 * PI / 4;
-        this.endAngle = 7 * PI / 4;
+        this.startAngle = CITY_RING.startAngle;
+        this.endAngle = CITY_RING.endAngle;
     }
 
     draw() {

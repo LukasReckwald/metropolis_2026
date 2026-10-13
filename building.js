@@ -1,4 +1,4 @@
-﻿class Building {
+class Building {
     constructor(x, z, width, height, depth, cityRingGroundLevel) {
         this.x = x;
         this.z = z;
@@ -27,8 +27,8 @@
         for (let row = 0; row < rows; row++) {
             for (let col = 0; col < cols; col++) {
                 if (random() < 0.5) {
-                    let yPos = -this.height/2 + row * spacing * 3 + spacing;
-                    let xOffset = -this.width/2 + col * spacing + spacing/2;
+                    let yPos = -this.height / 2 + row * spacing * 3 + spacing;
+                    let xOffset = -this.width / 2 + col * spacing + spacing / 2;
 
                     windows.push({
                         x: xOffset,
@@ -44,15 +44,19 @@
         return windows;
     }
 
-    draw() {
+    //Wird einmalig innerhalb von buildGeometry() aufgerufen
+    addBody() {
         push();
-        translate(this.x, this.groundLevel - this.height/2, this.z);
-        ambientLight(0, 0, 5);
-        noStroke();
+        translate(this.x, this.groundLevel - this.height / 2, this.z);
         fill(this.hue, this.sat, this.bright);
         box(this.width, this.height, this.depth);
+        pop();
+    }
 
-        noLights();
+    //Wird einmalig innerhalb von buildGeometry() aufgerufen
+    addWindows() {
+        push();
+        translate(this.x, this.groundLevel - this.height / 2, this.z);
 
         let frontZ = this.depth / 2 + 0.5;
         let leftX = -this.width / 2 - 0.5;
@@ -90,12 +94,12 @@
 
     calculateBoundingBox() {
         return {
-            minX: this.x - this.width/2,
-            maxX: this.x + this.width/2,
+            minX: this.x - this.width / 2,
+            maxX: this.x + this.width / 2,
             minY: this.groundLevel - this.height,
             maxY: this.groundLevel,
-            minZ: this.z - this.depth/2,
-            maxZ: this.z + this.depth/2
+            minZ: this.z - this.depth / 2,
+            maxZ: this.z + this.depth / 2
         };
     }
 

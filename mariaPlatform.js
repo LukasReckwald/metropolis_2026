@@ -1,6 +1,6 @@
 ﻿class MariaPlatform {
     constructor() {
-        this.color = {h: 40, s: 25, b: 35, a: 250};
+        this.color = {h: 40, s: 25, b: 35, a: 1};
         this.specular = {h: 40, s: 30, b: 60};
     }
 

@@ -1,6 +1,6 @@
-﻿class FogLayer {
-    constructor(fogImage, yPosition, radius, height, rotationSpeed) {
-        this.image = fogImage;
+class FogLayer {
+    constructor(fogTexture, yPosition, radius, height, rotationSpeed) {
+        this.texture = fogTexture;
         this.y = yPosition;
         this.radius = radius;
         this.height = height;
@@ -8,12 +8,11 @@
         this.angle = random(TWO_PI);
         this.opacity = random(40, 80);
         this.hue = random(38, 45);
-
-        this.doubleTexture = this.createDoubleTexture(fogImage);
     }
 
-    //Spiegelt die Textur horizontal, um nahtlose Rotation zu ermöglichen
-    createDoubleTexture(img) {
+    //Spiegelt die Textur horizontal, um nahtlose Rotation zu ermöglichen.
+    //Wird einmal erzeugt und von allen Nebelschichten geteilt.
+    static createSeamlessTexture(img) {
         let doubleImg = createGraphics(img.width * 2, img.height);
         doubleImg.image(img, 0, 0);
         doubleImg.push();
@@ -24,7 +23,7 @@
     }
 
     update() {
-        this.angle += this.rotationSpeed;
+        this.angle += this.rotationSpeed * frameFactor();
     }
 
     draw() {
@@ -35,7 +34,7 @@
 
         emissiveMaterial(this.hue, 20, 10);
         tint(this.hue, 25, 80, this.opacity);
-        texture(this.doubleTexture);
+        texture(this.texture);
         noStroke();
 
         cylinder(this.radius, this.height, 50, 1, false, false);
