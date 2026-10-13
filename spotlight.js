@@ -13,7 +13,7 @@
         this.intensity = random(100, 140);
         this.maxRadius = 100;
         this.alpha = 0.01;
-        this.segments = 50;
+        this.segments = 24;
 
         if (mode === 'v-left' || mode === 'v-right') {
             this.maxRadius = 50;

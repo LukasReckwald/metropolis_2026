@@ -23,6 +23,7 @@ let buildings = [];
 let spotlights = [];
 let animatedRingSets = [];
 let fogLayers = [];
+let thunderStrike;
 let fogImage;
 let metropolisFont;
 let metropolisTextModel;
@@ -60,6 +61,8 @@ async function setup() {
     generateSpotlights();
     generateAnimatedRingSet();
     generateFog();
+
+    thunderStrike = new ThunderStrike();
 }
 
 function generateBuildings() {
@@ -212,6 +215,13 @@ function draw() {
     ambientLight(40, 30, 20);
     directionalLight(40, 50, 60, 0, -1, -1);
 
+    //Blitz-Aufhellung
+    let flash = thunderStrike.getFlashIntensity();
+    if (flash > 0) {
+        ambientLight(0, 0, flash * 60);
+        directionalLight(0, 0, flash * 40, 0, -1, 0);
+    }
+
     orbitControl();
 
     mariaPlatform.draw();
@@ -253,6 +263,9 @@ function draw() {
         fog.update();
         fog.draw();
     }
+
+    thunderStrike.update();
+    thunderStrike.draw();
 }
 
 function raycastHit(startX, startY, startZ, dirX, dirY, dirZ) {
@@ -316,6 +329,10 @@ function keyPressed() {
         for (let ringSet of animatedRingSets) {
             ringSet.toggle();
         }
+    }
+
+    if (key === 't' || key === 'T') {
+        thunderStrike.toggle();
     }
 }
 

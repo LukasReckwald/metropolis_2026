@@ -12,6 +12,7 @@
         this.bright = random(8, 12);
 
         this.windows = this.generateWindows();
+        this.boundingBox = this.calculateBoundingBox();
     }
 
     generateWindows() {
@@ -52,34 +53,42 @@
         box(this.width, this.height, this.depth);
 
         noLights();
-        for (let window of this.windows) {
-            fill(45, 80, window.brightness);
+
+        let frontZ = this.depth / 2 + 0.5;
+        let leftX = -this.width / 2 - 0.5;
+        let rightX = this.width / 2 + 0.5;
+
+        for (let w of this.windows) {
+            fill(45, 80, w.brightness);
 
             //vorne
-            push();
-            translate(window.x, window.y, this.depth/2 + 0.5);
-            rect(0, 0, window.width, window.height);
-            pop();
+            beginShape();
+            vertex(w.x, w.y, frontZ);
+            vertex(w.x + w.width, w.y, frontZ);
+            vertex(w.x + w.width, w.y + w.height, frontZ);
+            vertex(w.x, w.y + w.height, frontZ);
+            endShape(CLOSE);
 
             //links
-            push();
-            translate(-this.width/2 - 0.5, window.y, window.x);
-            rotateY(HALF_PI);
-            rect(0, 0, window.width, window.height);
-            pop();
+            beginShape();
+            vertex(leftX, w.y, w.x);
+            vertex(leftX, w.y, w.x - w.width);
+            vertex(leftX, w.y + w.height, w.x - w.width);
+            vertex(leftX, w.y + w.height, w.x);
+            endShape(CLOSE);
 
             //rechts
-            push();
-            translate(this.width/2 + 0.5, window.y, -window.x);
-            rotateY(-HALF_PI);
-            rect(0, 0, window.width, window.height);
-            pop();
-
+            beginShape();
+            vertex(rightX, w.y, -w.x);
+            vertex(rightX, w.y, -w.x + w.width);
+            vertex(rightX, w.y + w.height, -w.x + w.width);
+            vertex(rightX, w.y + w.height, -w.x);
+            endShape(CLOSE);
         }
         pop();
     }
 
-    getBoundingBox() {
+    calculateBoundingBox() {
         return {
             minX: this.x - this.width/2,
             maxX: this.x + this.width/2,
@@ -88,5 +97,9 @@
             minZ: this.z - this.depth/2,
             maxZ: this.z + this.depth/2
         };
+    }
+
+    getBoundingBox() {
+        return this.boundingBox;
     }
 }
